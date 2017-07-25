@@ -78,6 +78,8 @@ def installSlicer(filepath):
         slicerFilename = 'Slicer.app'
         slicerAppSrcPath = os.path.join(mountDir, slicerFilename)
         slicerAppDstPath = os.path.join('/Applications', slicerFilename)
+        if os.path.isdir(slicerAppDstPath):
+            shutil.rmtree(slicerAppDstPath)
         shutil.copytree(slicerAppSrcPath, slicerAppDstPath)
         cmd = ['hdiutil', 'detach', mountDir]
         subprocess.call(cmd)
