@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import os
 import re
@@ -10,7 +10,6 @@ import subprocess
 from sys import platform as _platform
 
 from bs4 import BeautifulSoup
-
 
 
 
@@ -109,4 +108,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
