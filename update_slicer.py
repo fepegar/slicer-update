@@ -2,8 +2,10 @@
 
 import os
 import re
+import sys
 import time
 import shutil
+import hashlib
 import tempfile
 import urllib2
 import subprocess
@@ -72,7 +74,7 @@ def installSlicer(filepath):
 
         mountDir = output[0].split()[-1]
 
-        print 'Mount directory:', mountDir
+        print('Mount directory:', mountDir)
 
         slicerFilename = 'Slicer.app'
         slicerAppSrcPath = os.path.join(mountDir, slicerFilename)
@@ -87,23 +89,74 @@ def installSlicer(filepath):
         pass
 
 
+def createCask(revisionNumber, downloadURL, outputCaskPath, dmgPath=None):
+    if dmgPath is None:
+        sha256String = ':no_check'
+    else:
+        sha256String = getSHA256(dmgPath)
+
+    n = downloadURL.split('/')[-1]
+
+    strings = ["cask 'slicer-nightly' do",
+               "  version '4.7.0.{},{}'".format(revisionNumber, n),
+               "  sha256 '{}'".format(sha256String),
+               "  ",
+               "  # slicer.kitware.com/midas3 was verified as official when first introduced to the cask",
+               "  url 'http://slicer.kitware.com/midas3/download?bitstream=#{version.after_comma}'",
+               "  name '3D Slicer Nightly'",
+               "  homepage 'https://www.slicer.org/'",
+               "  ",
+               "  app 'Slicer.app'",
+               "end"]
+    string = '\n'.join(strings)
+
+    with open(outputCaskPath, 'w') as f:
+        f.write(string)
+
+
+def getSHA256(filepath):
+    """
+    From https://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
+    """
+    hashSHA256 = hashlib.sha256()
+    with open(filepath, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hashSHA256.update(chunk)
+    return hashSHA256.hexdigest()
+
+
 def main():
     version = 'nightly'
 
+    startTime = time.time()
+    print('Updating Slicer: {}'.format(time.asctime(time.localtime(time.time()))))
+
+    # Create a temporary dir to store the downloaded file
     tempDir = tempfile.mkdtemp()
 
-    startTime = time.time()
-    print 'Updating Slicer: {}'.format(time.asctime(time.localtime(time.time())))
-    downloadURL, revisionNumberString = getDownloadURLAndRevisionNumber(version)
-    print 'Downloading nightly build number {} from {}...'.format(revisionNumberString, downloadURL)
-    tempPath = downloadSlicer(downloadURL, tempDir)
-    installSlicer(tempPath)
+    # Get download URL from Slicer download page
+    downloadURL, revisionNumber = getDownloadURLAndRevisionNumber(version)
+    print('Downloading nightly build number {} from {}...'.format(revisionNumber, downloadURL))
 
+    # Download the DMG file
+    # tempPath = downloadSlicer(downloadURL, tempDir)
+
+    # # Mount, copy to apps and unmount
+    # installSlicer(tempPath)
+
+    # Create a brew cask
+    if len(sys.argv) > 1:
+        print('Creating cask...')
+        outputCaskPath = sys.argv[1]
+        createCask(revisionNumber, downloadURL, outputCaskPath, dmgPath=tempPath)
+
+    # Cleanup
+    shutil.rmtree(tempDir)
+
+    # Show time
     endTime = int(time.time() - startTime)
     m, s = divmod(endTime, 60)
-    print 'Operation finished in {} minutes and {} seconds\n\n'.format(m, s)
-
-    shutil.rmtree(tempDir)
+    print('Operation finished in {} minutes and {} seconds\n\n'.format(m, s))
 
 
 if __name__ == '__main__':
